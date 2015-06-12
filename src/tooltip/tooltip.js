@@ -65,7 +65,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
    * Returns the actual instance of the $tooltip service.
    * TODO support multiple triggers
    */
-  this.$get = [ '$window', '$compile', '$timeout', '$document', '$position', '$interpolate', function ( $window, $compile, $timeout, $document, $position, $interpolate ) {
+  this.$get = [ '$window', '$parse', '$compile', '$timeout', '$document', '$position', '$interpolate', function ( $window, $parse, $compile, $timeout, $document, $position, $interpolate ) {
     return function $tooltip ( type, prefix, defaultTriggerShow, options ) {
       options = angular.extend( {}, defaultOptions, globalOptions, options );
 
@@ -124,6 +124,8 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
             var triggers = getTriggers( undefined );
             var hasEnableExp = angular.isDefined(attrs[prefix+'Enable']);
             var ttScope = scope.$new(true);
+            var isOpenGetter = $parse(attrs[prefix+'IsOpen']) || angular.noop;
+            var isOpenSetter = isOpenGetter.assign || angular.noop;
 
             var positionTooltip = function () {
               if (!tooltip) { return; }
@@ -150,6 +152,14 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
                 hideTooltipBind();
               }
             }
+            scope.$watch(attrs[prefix+'IsOpen'], function(value) {
+              if(!angular.isDefined(value) || value == ttScope.isOpen) {
+                return;
+              }
+              $timeout(function() {
+                toggleTooltipBind();
+              });
+            });
 
             // Show the tooltip with delay if specified, otherwise show it immediately
             function showTooltipBind() {
@@ -204,6 +214,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
 
               // And show the tooltip.
               ttScope.isOpen = true;
+              isOpenSetter(scope, true);
               ttScope.$apply(); // digest required as $apply is not called
 
               // Return positioning function as promise callback for correct
@@ -215,6 +226,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
             function hide() {
               // First things first: we don't show it anymore.
               ttScope.isOpen = false;
+              isOpenSetter(scope, false);
 
               //if tooltip is going to be shown after delay, we must cancel this
               $timeout.cancel( popupTimeout );
